@@ -12,6 +12,8 @@ import PyPDF2
 import docx
 import textract
 from pdfminer.high_level import extract_text as pdfminer_extract_text
+import fitz  # PyMuPDF for PDF image extraction
+from .image_utils import extract_images_from_pdf, extract_images_from_docx
 
 # Configure logging
 logging.basicConfig(
@@ -224,6 +226,22 @@ class DocumentExtractor:
         except Exception as e:
             logger.error(f"Textract extraction failed: {str(e)}")
             return {"error": f"Unsupported file type extraction failed: {str(e)}"}
+    
+    def extract_with_images(self, file_path: str) -> Dict[str, Any]:
+        """
+        Extract text and images from a document file.
+        Returns a dict with text, images, and metadata for Mistral 7B training data preparation.
+        """
+        base = self.extract(file_path)
+        _, ext = os.path.splitext(file_path.lower())
+        images = []
+        if ext == ".pdf":
+            images = extract_images_from_pdf(file_path)
+        elif ext == ".docx":
+            images = extract_images_from_docx(file_path)
+        # Symbols: If symbols are images, they're included above; if text, handle in downstream processing.
+        base["images"] = images
+        return base
 
 
 def extract_text_from_file(file_path: str) -> Dict[str, Any]:
